@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "test": "node --test",
-    "check": "node --check api/index.js && node --check src/app.js && node --check src/image.js && node --check src/inception.js && node --check src/store.js"
+    "check": "node --check api/index.js && node --check src/app.js && node --check src/image.js && node --check src/inception.js && node --check src/store.js && node --check src/token-usage.js"
   },
   "keywords": [
     "inception",

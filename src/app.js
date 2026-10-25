@@ -18,6 +18,7 @@ import {
 } from "./models.js";
 import { requireApiToken, validateUid } from "./security.js";
 import { ConversationStore } from "./store.js";
+import { buildTokenReport } from "./token-usage.js";
 
 let sharedStore;
 
@@ -58,6 +59,11 @@ function publicMetadata(config) {
       analysis_model: "mercury-decide",
       supported_formats: ["PNG", "JPEG", "WebP", "GIF"],
       remote_urls_must_use_https: true,
+    },
+    token_reporting: {
+      response_field: "tokens",
+      free_tier_reference: config.freeTokenReference,
+      projection_is_not_account_balance: true,
     },
     examples: {
       text: "/api?mercy=Bonjour&uid=123&model=mercury-3",
@@ -219,6 +225,12 @@ export function createHandler(dependencies = {}) {
         { role: "assistant", content: completion.answer },
       ]);
 
+      const tokens = buildTokenReport(
+        completion.usage,
+        vision?.usage ?? null,
+        config.freeTokenReference,
+      );
+
       sendJson(res, 200, {
         ok: true,
         request_id: id,
@@ -227,6 +239,7 @@ export function createHandler(dependencies = {}) {
         reasoning_effort: effort,
         answer: completion.answer,
         usage: completion.usage,
+        tokens,
         finish_reason: completion.finishReason,
         image: vision,
         conversation: {

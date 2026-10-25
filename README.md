@@ -112,6 +112,26 @@ Avec une image :
     "completion_tokens": 10,
     "total_tokens": 22
   },
+  "tokens": {
+    "chat": {
+      "input": 12,
+      "cached_input": 0,
+      "output": 10,
+      "reasoning": 0,
+      "total": 22
+    },
+    "vision": null,
+    "request": {
+      "input": 12,
+      "output": 10,
+      "total": 22
+    },
+    "free_tier_projection": {
+      "reference_tokens": 100000000,
+      "similar_requests": 4545454,
+      "basis": "Projection théorique à consommation identique; ce n'est pas le solde réel du compte."
+    }
+  },
   "image": null,
   "conversation": {
     "message_count": 2,
@@ -123,7 +143,14 @@ Avec une image :
 }
 ```
 
-Pour une image, le champ `image` contient également les observations et l'utilisation de `mercury-decide`.
+Pour une image, le champ `image` contient également les observations et l'utilisation de `mercury-decide`. Le champ normalisé `tokens` additionne automatiquement le chat et la vision :
+
+- `tokens.chat` : entrée, sortie, raisonnement et total du modèle de chat ;
+- `tokens.vision` : entrée, sortie et total de `mercury-decide`, ou `null` sans image ;
+- `tokens.request` : consommation complète de la requête ;
+- `tokens.free_tier_projection.similar_requests` : nombre théorique de requêtes identiques pour 100 millions de tokens. Cette projection n'est pas le solde réel du compte.
+
+Les tokens de raisonnement font déjà partie des tokens de sortie et ne sont donc pas comptés deux fois.
 
 ## Effacer une conversation
 
@@ -188,6 +215,7 @@ Sans Redis, l'API fonctionne, mais l'historique reste en mémoire et peut dispar
 | `DEFAULT_MODEL` | Non | `mercury-3` | Modèle utilisé si `model` est absent |
 | `DEFAULT_REASONING_EFFORT` | Non | `low` | Effort de raisonnement par défaut |
 | `MAX_COMPLETION_TOKENS` | Non | `1200` | Limite de sortie par réponse |
+| `FREE_TOKEN_REFERENCE` | Non | `100000000` | Référence utilisée pour projeter le nombre de requêtes similaires |
 | `UPSTASH_REDIS_REST_URL` | Recommandé | vide | URL REST Upstash |
 | `UPSTASH_REDIS_REST_TOKEN` | Recommandé | vide | Jeton REST Upstash |
 | `CONVERSATION_TTL_SECONDS` | Non | `604800` | Durée de vie de l'historique (7 jours) |

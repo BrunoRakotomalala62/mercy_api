@@ -36,6 +36,12 @@ export function getConfig(env = process.env) {
       1,
       131072,
     ),
+    freeTokenReference: integerFromEnv(
+      env.FREE_TOKEN_REFERENCE,
+      100000000,
+      1,
+      1000000000000,
+    ),
     upstreamTimeoutMs: integerFromEnv(
       env.UPSTREAM_TIMEOUT_MS,
       55000,

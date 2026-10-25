@@ -117,6 +117,8 @@ test("une conversation continue avec le même uid", async () => {
 
   assert.equal(first.status, 200);
   assert.equal(first.json.model, "mercury-2.5");
+  assert.equal(first.json.tokens.request.total, 10);
+  assert.equal(first.json.tokens.free_tier_projection.similar_requests, 10000000);
   assert.equal(second.json.answer, "Réponse 2");
   assert.equal(inception.chatCalls[1].messages.length, 3);
   assert.equal(inception.chatCalls[1].messages[1].role, "assistant");
@@ -144,6 +146,8 @@ test("la route image combine Mercury Decide et le modèle choisi", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.json.model, "mercury-2");
   assert.equal(response.json.image.model, "mercury-decide");
+  assert.equal(response.json.tokens.vision.total, 13);
+  assert.equal(response.json.tokens.request.total, 23);
   assert.equal(inception.visionCalls.length, 1);
   assert.match(inception.chatCalls[0].messages[0].content, /paysage/);
   assert.doesNotMatch(inception.chatCalls[0].messages[0].content, /base64/);
