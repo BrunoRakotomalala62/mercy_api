@@ -59,7 +59,13 @@ paths:
                   $ref: '#/components/schemas/Model'
                 image:
                   type: string
-                  format: uri
+                  description: URL HTTPS publique ou data URL PNG/JPEG/WebP/GIF.
+                images:
+                  type: array
+                  maxItems: 4
+                  items:
+                    type: string
+                  description: Jusqu'à quatre URL HTTPS ou data URLs d'images.
                 effort:
                   type: string
                   enum: [instant, low, medium, high]

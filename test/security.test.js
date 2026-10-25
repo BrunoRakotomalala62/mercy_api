@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createPinnedLookup, validateImageUrl } from "../src/image.js";
+import {
+  createPinnedLookup,
+  parseImageDataUrl,
+  validateImageUrl,
+} from "../src/image.js";
 import { isPrivateOrReservedIp, validateUid } from "../src/security.js";
 
 test("les réseaux privés et réservés sont bloqués", () => {
@@ -36,6 +40,17 @@ test("la liste blanche d'hôtes accepte les sous-domaines", () => {
   assert.throws(() =>
     validateImageUrl("https://example.net/a.png", ["example.com"]),
   );
+});
+
+test("les images data URL sont validées et limitées", () => {
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2n0kAAAAASUVORK5CYII=";
+  const parsed = parseImageDataUrl(png, 1024);
+  assert.equal(parsed.contentType, "image/png");
+  assert.equal(parsed.sourceType, "data");
+  assert.equal(parsed.finalUrl, null);
+  assert.throws(() => parseImageDataUrl("data:text/plain;base64,SGVsbG8=", 1024));
+  assert.throws(() => parseImageDataUrl("data:image/png;base64,SGVsbG8=", 1024));
 });
 
 test("le DNS épinglé respecte les deux signatures Node", () => {

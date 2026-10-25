@@ -10,6 +10,77 @@ const SUPPORTED_TYPES = new Set([
   "image/gif",
 ]);
 
+function hasExpectedImageSignature(buffer, contentType) {
+  if (contentType === "image/png") {
+    return buffer.length >= 8 && buffer.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+  }
+  if (contentType === "image/jpeg") {
+    return buffer.length >= 3 &&
+      buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  if (contentType === "image/gif") {
+    const signature = buffer.subarray(0, 6).toString("ascii");
+    return signature === "GIF87a" || signature === "GIF89a";
+  }
+  if (contentType === "image/webp") {
+    return buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  }
+  return false;
+}
+
+export function parseImageDataUrl(rawValue, maxBytes) {
+  if (typeof rawValue !== "string") {
+    throw new HttpError(400, "invalid_image_data", "L'image encodée est invalide.");
+  }
+  const match = rawValue.match(
+    /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/i,
+  );
+  if (!match) {
+    throw new HttpError(
+      415,
+      "unsupported_image_type",
+      "Les data URLs doivent contenir une image PNG, JPEG, WebP ou GIF en base64.",
+    );
+  }
+
+  const contentType = match[1].toLowerCase();
+  const encoded = match[2].replace(/\s+/g, "");
+  if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
+    throw new HttpError(400, "invalid_image_data", "Le contenu base64 de l'image est invalide.");
+  }
+
+  const buffer = Buffer.from(encoded, "base64");
+  if (!buffer.length) {
+    throw new HttpError(422, "empty_image", "L'image encodée est vide.");
+  }
+  if (buffer.length > maxBytes) {
+    throw new HttpError(
+      413,
+      "image_too_large",
+      `L'image dépasse la limite de ${maxBytes} octets.`,
+    );
+  }
+  if (!hasExpectedImageSignature(buffer, contentType)) {
+    throw new HttpError(
+      422,
+      "invalid_image_data",
+      "Le contenu ne correspond pas au format d'image annoncé.",
+    );
+  }
+
+  return {
+    dataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
+    contentType,
+    size: buffer.length,
+    finalUrl: null,
+    sourceType: "data",
+  };
+}
+
 function hostAllowed(hostname, allowlist) {
   if (!allowlist.length) return true;
   const host = hostname.toLowerCase();
@@ -230,5 +301,6 @@ export async function downloadImageAsDataUrl(rawUrl, config, redirects = 0) {
     contentType,
     size,
     finalUrl: url.toString(),
+    sourceType: "url",
   };
 }

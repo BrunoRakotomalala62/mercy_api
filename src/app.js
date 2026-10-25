@@ -8,7 +8,7 @@ import {
   sendJson,
   setCommonHeaders,
 } from "./http.js";
-import { downloadImageAsDataUrl } from "./image.js";
+import { downloadImageAsDataUrl, parseImageDataUrl } from "./image.js";
 import { InceptionClient } from "./inception.js";
 import {
   CHAT_MODELS,
@@ -38,6 +38,20 @@ function truthy(value) {
   return ["1", "true", "yes", "oui", "on"].includes(String(value).toLowerCase());
 }
 
+function imageValuesFrom(input) {
+  const values = [];
+  const append = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(append);
+      return;
+    }
+    if (typeof value === "string" && value.trim()) values.push(value.trim());
+  };
+  append(input.image);
+  append(input.images);
+  return values;
+}
+
 function publicMetadata(config) {
   return {
     ok: true,
@@ -59,6 +73,8 @@ function publicMetadata(config) {
       analysis_model: "mercury-decide",
       supported_formats: ["PNG", "JPEG", "WebP", "GIF"],
       remote_urls_must_use_https: true,
+      data_urls_allowed_in_post: true,
+      max_images: 4,
     },
     token_reporting: {
       response_field: "tokens",
@@ -80,7 +96,7 @@ async function parseInput(req) {
   if (req.method === "GET") return query;
   if (req.method === "POST") {
     try {
-      const body = await readJsonBody(req);
+      const body = await readJsonBody(req, 12 * 1024 * 1024);
       return { ...query, ...body };
     } catch (error) {
       if (error.code === "REQUEST_TOO_LARGE") {
@@ -183,7 +199,15 @@ export function createHandler(dependencies = {}) {
         );
       }
 
-      const imageUrl = valueFrom(input, "image").trim();
+      const imageInputs = imageValuesFrom(input);
+      if (imageInputs.length > 4) {
+        throw new HttpError(
+          400,
+          "too_many_images",
+          "Un maximum de 4 images est accepté par requête.",
+        );
+      }
+
       const historyState = shouldReset
         ? { messages: [], persistent: false, backend: "memory", warning: null }
         : await store.get(uid);
@@ -193,23 +217,40 @@ export function createHandler(dependencies = {}) {
 
       let modelPrompt = prompt;
       let vision = null;
-      if (imageUrl) {
+      if (imageInputs.length) {
         if (!config.enableVision) {
           throw new HttpError(503, "vision_disabled", "L'analyse d'image est désactivée.");
         }
         const imageLoader = dependencies.imageLoader ?? downloadImageAsDataUrl;
-        const image = await imageLoader(imageUrl, config);
+        const dataImageParser = dependencies.dataImageParser ?? parseImageDataUrl;
+        const images = await Promise.all(
+          imageInputs.map((value) =>
+            value.startsWith("data:")
+              ? dataImageParser(value, config.maxImageBytes)
+              : imageLoader(value, config),
+          ),
+        );
         const analysis = await inception.analyzeImage({
-          dataUrl: image.dataUrl,
+          dataUrls: images.map((image) => image.dataUrl),
           prompt,
         });
         modelPrompt = `${prompt}\n\n${analysis.profile}`;
+        const firstImage = images[0];
         vision = {
           analyzed: true,
           model: "mercury-decide",
-          source_url: image.finalUrl,
-          content_type: image.contentType,
-          bytes: image.size,
+          count: images.length,
+          source_url: firstImage.finalUrl,
+          content_type: firstImage.contentType,
+          bytes: firstImage.size,
+          total_bytes: images.reduce((sum, image) => sum + image.size, 0),
+          sources: images.map((image, index) => ({
+            index,
+            type: image.sourceType ?? (image.finalUrl ? "url" : "data"),
+            url: image.finalUrl,
+            content_type: image.contentType,
+            bytes: image.size,
+          })),
           observations: analysis.observations,
           usage: analysis.usage,
         };

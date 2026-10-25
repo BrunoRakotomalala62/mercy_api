@@ -153,6 +153,33 @@ test("la route image combine Mercury Decide et le modèle choisi", async () => {
   assert.doesNotMatch(inception.chatCalls[0].messages[0].content, /base64/);
 });
 
+test("POST accepte jusqu'à quatre images data URL pour le site web", async () => {
+  const inception = new FakeInception();
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2n0kAAAAASUVORK5CYII=";
+  const handler = createHandler({
+    config: baseConfig(),
+    store: new FakeStore(),
+    inception,
+  });
+
+  const response = await invoke(handler, "/api", {
+    method: "POST",
+    body: {
+      message: "Compare ces images",
+      uid: "img-data-1",
+      model: "mercury-3",
+      images: [png, png],
+      reset: true,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.json.image.count, 2);
+  assert.equal(response.json.image.sources[0].type, "data");
+  assert.equal(inception.visionCalls[0].dataUrls.length, 2);
+});
+
 test("MERCY_API_TOKEN protège la route", async () => {
   const handler = createHandler({
     config: baseConfig({ publicApiToken: "secret" }),

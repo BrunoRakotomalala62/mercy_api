@@ -6,7 +6,7 @@ API REST déployable sur Vercel pour interroger au choix :
 - `mercury-2.5`
 - `mercury-3` (modèle par défaut)
 
-Elle conserve la conversation grâce au paramètre `uid`, accepte une image distante en HTTPS et ne révèle jamais la clé Inception au client.
+Elle conserve la conversation grâce au paramètre `uid`, accepte jusqu'à quatre images par URL HTTPS ou data URL en POST et ne révèle jamais la clé Inception au client.
 
 ## Route demandée
 
@@ -55,7 +55,7 @@ curl -G "https://YOUR_PROJECT.vercel.app/api" \
 
 > **Limite importante :** les trois modèles de chat Mercury sont textuels. Pour une image, l'API télécharge le fichier de façon contrôlée, l'envoie à `mercury-decide` pour produire des observations visuelles structurées, puis demande au modèle de chat choisi de rédiger la réponse. Cette solution permet classification et description générale, mais elle n'est pas équivalente à un modèle vision génératif capable de produire une légende libre très détaillée.
 
-Mercury Decide exige une image PNG, JPEG, WebP ou GIF en base64. L'API effectue automatiquement la conversion depuis une URL HTTPS publique. Les URL locales/privées sont bloquées pour éviter les attaques SSRF.
+Mercury Decide exige des images PNG, JPEG, WebP ou GIF en base64. L'API effectue automatiquement la conversion depuis les URL HTTPS publiques. En POST, elle accepte aussi directement des data URLs et jusqu'à quatre images dans le tableau `images`. Les URL locales/privées sont bloquées pour éviter les attaques SSRF.
 
 ## Choix du modèle
 
@@ -94,6 +94,21 @@ Avec une image :
   "image": "https://example.com/photo.jpg",
   "uid": "123",
   "model": "mercury-3"
+}
+```
+
+Avec plusieurs images ou des fichiers convertis en data URLs par un site web :
+
+```json
+{
+  "message": "Compare ces deux images",
+  "images": [
+    "data:image/jpeg;base64,...",
+    "https://example.com/photo-2.png"
+  ],
+  "uid": "123",
+  "model": "mercury-3",
+  "reset": true
 }
 ```
 

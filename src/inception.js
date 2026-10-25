@@ -289,15 +289,22 @@ export class InceptionClient {
     };
   }
 
-  async analyzeImage({ dataUrl, prompt }) {
+  async analyzeImage({ dataUrl, dataUrls, prompt }) {
+    const images = (Array.isArray(dataUrls) ? dataUrls : [dataUrl]).filter(Boolean);
+    if (!images.length) {
+      throw new HttpError(400, "missing_image", "Aucune image à analyser.");
+    }
     const payload = await this.post("/decisions", {
       model: "mercury-decide",
       state: [
         {
           type: "text",
-          text: `Analyse visuelle structurée. Demande de l'utilisateur : ${prompt}`,
+          text: `Analyse visuelle structurée de ${images.length} image(s). Demande de l'utilisateur : ${prompt}`,
         },
-        { type: "image_url", image_url: { url: dataUrl } },
+        ...images.map((url) => ({
+          type: "image_url",
+          image_url: { url },
+        })),
       ],
       questions: VISION_QUESTIONS,
     });
