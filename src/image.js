@@ -89,6 +89,18 @@ async function resolvePublicAddress(hostname) {
   return addresses[0];
 }
 
+export function createPinnedLookup(address) {
+  return (_hostname, options, callback) => {
+    // Node 20+ may request every address (`options.all`) when
+    // autoSelectFamily is enabled. Respect both callback signatures.
+    if (options?.all) {
+      callback(null, [{ address: address.address, family: address.family }]);
+      return;
+    }
+    callback(null, address.address, address.family);
+  };
+}
+
 function getHttpsResponse(url, address, timeoutMs) {
   return new Promise((resolve, reject) => {
     const request = https.get(
@@ -99,9 +111,7 @@ function getHttpsResponse(url, address, timeoutMs) {
           "Accept-Encoding": "identity",
           "User-Agent": "Mercy-API/1.0 image-fetcher",
         },
-        lookup: (_hostname, _options, callback) => {
-          callback(null, address.address, address.family);
-        },
+        lookup: createPinnedLookup(address),
       },
       resolve,
     );

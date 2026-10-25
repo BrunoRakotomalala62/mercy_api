@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateImageUrl } from "../src/image.js";
+import { createPinnedLookup, validateImageUrl } from "../src/image.js";
 import { isPrivateOrReservedIp, validateUid } from "../src/security.js";
 
 test("les réseaux privés et réservés sont bloqués", () => {
@@ -36,6 +36,21 @@ test("la liste blanche d'hôtes accepte les sous-domaines", () => {
   assert.throws(() =>
     validateImageUrl("https://example.net/a.png", ["example.com"]),
   );
+});
+
+test("le DNS épinglé respecte les deux signatures Node", () => {
+  const lookup = createPinnedLookup({ address: "8.8.8.8", family: 4 });
+
+  lookup("example.com", { all: true }, (error, addresses) => {
+    assert.equal(error, null);
+    assert.deepEqual(addresses, [{ address: "8.8.8.8", family: 4 }]);
+  });
+
+  lookup("example.com", { all: false }, (error, address, family) => {
+    assert.equal(error, null);
+    assert.equal(address, "8.8.8.8");
+    assert.equal(family, 4);
+  });
 });
 
 test("uid est strictement validé", () => {
