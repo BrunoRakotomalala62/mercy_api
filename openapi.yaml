@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: Mercy API
+  version: 1.0.0
+  description: API conversationnelle utilisant Mercury 2, Mercury 2.5 ou Mercury 3.
+servers:
+  - url: https://YOUR_PROJECT.vercel.app
+paths:
+  /api:
+    get:
+      summary: Envoyer un message ou analyser une image
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/Mercy'
+        - $ref: '#/components/parameters/Uid'
+        - $ref: '#/components/parameters/Model'
+        - $ref: '#/components/parameters/Image'
+        - $ref: '#/components/parameters/Effort'
+        - name: reset
+          in: query
+          schema:
+            type: boolean
+          description: Efface l'historique associé à uid.
+      responses:
+        '200':
+          description: Réponse générée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '502':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Envoyer les mêmes paramètres dans un corps JSON
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, uid]
+              properties:
+                message:
+                  type: string
+                uid:
+                  type: string
+                model:
+                  $ref: '#/components/schemas/Model'
+                image:
+                  type: string
+                  format: uri
+                effort:
+                  type: string
+                  enum: [instant, low, medium, high]
+                reset:
+                  type: boolean
+      responses:
+        '200':
+          description: Réponse générée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Requis seulement lorsque MERCY_API_TOKEN est configuré.
+  parameters:
+    Mercy:
+      name: mercy
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Message de l'utilisateur. Obligatoire sauf pour reset.
+    Uid:
+      name: uid
+      in: query
+      required: true
+      schema:
+        type: string
+        maxLength: 128
+      description: Identifiant de conversation.
+    Model:
+      name: model
+      in: query
+      schema:
+        $ref: '#/components/schemas/Model'
+    Image:
+      name: image
+      in: query
+      schema:
+        type: string
+        format: uri
+      description: URL HTTPS publique d'une image PNG, JPEG, WebP ou GIF.
+    Effort:
+      name: effort
+      in: query
+      schema:
+        type: string
+        enum: [instant, low, medium, high]
+  schemas:
+    Model:
+      type: string
+      enum: [mercury-2, mercury-2.5, mercury-3]
+      default: mercury-3
+    Success:
+      type: object
+      properties:
+        ok:
+          const: true
+        request_id:
+          type: string
+        uid:
+          type: string
+        model:
+          $ref: '#/components/schemas/Model'
+        answer:
+          type: string
+        usage:
+          type: object
+        image:
+          anyOf:
+            - type: object
+            - type: 'null'
+        conversation:
+          type: object
+    Error:
+      type: object
+      properties:
+        ok:
+          const: false
+        request_id:
+          type: string
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+  responses:
+    Error:
+      description: Erreur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

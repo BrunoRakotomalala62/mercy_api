@@ -1,0 +1,22 @@
+{
+  "name": "mercy-api",
+  "version": "1.0.0",
+  "description": "API REST Vercel pour Mercury 2, Mercury 2.5 et Mercury 3, avec historique par uid et analyse d'images.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node --test",
+    "check": "node --check api/index.js && node --check src/app.js && node --check src/image.js && node --check src/inception.js && node --check src/store.js"
+  },
+  "keywords": [
+    "inception",
+    "mercury",
+    "vercel",
+    "rest-api"
+  ],
+  "license": "MIT"
+}
